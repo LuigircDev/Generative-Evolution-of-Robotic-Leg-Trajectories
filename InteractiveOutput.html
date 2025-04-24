@@ -1,0 +1,319 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Mecanismo de Theo Jansen Interactivo</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            #container { width: 900px; margin: 0 auto; }
+            #mechanism { width: 100%; height: 500px; border: 1px solid #ccc; }
+            .controls { margin: 20px 0; }
+            .slider { width: 70%; }
+            svg { background-color: #f9f9f9; }
+            .rod { stroke-width: 3; stroke-linecap: round; }
+            .joint { fill: white; stroke: black; stroke-width: 2; }
+            .fixed-joint { fill: black; stroke: black; stroke-width: 2; }
+            .foot { fill: red; stroke: black; stroke-width: 2; }
+            .trajectory { fill: none; stroke: blue; stroke-width: 1.5; stroke-dasharray: 3,3; }
+            .infotext { font-size: 14px; font-family: monospace; }
+        </style>
+    </head>
+    <body>
+        <div id="container">
+            <h1>Simulación de Mecanismo de Theo Jansen</h1>
+            <div id="mechanism"></div>
+            <div class="controls">
+                <button id="playPauseBtn">▶ Iniciar</button>
+                <button id="resetBtn">⟲ Reiniciar</button>
+                <input type="range" min="0" max="99" value="0" class="slider" id="angleSlider">
+                <span id="angleValue">0°</span>
+            </div>
+            <div id="info">
+                <p>Longitudes:</p>
+                <pre id="lengths"></pre>
+                <p>Cruces detectados: <span id="crossings"></span></p>
+            </div>
+        </div>
+
+        <script>
+            // Datos del mecanismo
+            const pivot_distance = 38.0;
+            const segment_lengths = [15.0, 37.5, 37.5, 30.0, 30.0, 37.5, 37.5, 30.0, 30.0, 30.0, 30.0];
+
+            // Crear el SVG
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            svg.setAttribute("viewBox", "-80 -100 200 150");
+            document.getElementById("mechanism").appendChild(svg);
+
+            // Añadir la trayectoria
+            const trajectory = document.createElementNS(svgNS, "path");
+            trajectory.setAttribute("class", "trajectory");
+
+            // Puntos de trayectoria
+            const trajectoryPoints = [(-5.508769347178676, 59.74557308044123), (-2.766521333364002, 59.936173564775764), (-0.12150535661458584, 59.99931358497674), (2.3795686085148766, 59.9503223682745), (4.6952473737090585, 59.81050071317413), (6.79120739088914, 59.605043459428074), (8.641272832718183, 59.360703087072224), (10.227626228431882, 59.10353390792981), (11.54038397868582, 58.856979139709026), (12.576755616741442, 58.64045817537473), (13.339986623334903, 58.468512805617316), (13.838231492259284, 58.35049508496235), (14.083448049637495, 58.29072664400453), (14.090364428833796, 58.28902469380383), (13.875549597257736, 58.34147113774874), (13.456609569535825, 58.44129882540945), (12.851525146294511, 58.57978334929051), (12.078138059611854, 58.74705630815227), (11.153780975994428, 58.93278933116861), (10.095035967378156, 59.12672942934177), (8.917598688362373, 59.31908994613612), (7.6362226947041485, 59.50081570047466), (6.264719492685387, 59.66374694173026), (4.815993558899185, 59.80070694268829), (3.302096225234223, 59.9055350088988), (1.7342869027043761, 59.97308235927335), (0.1230940293048981, 59.9991839675642), (-1.5216288338001878, 59.98061566478869), (-3.1906541371494317, 59.91504279688185), (-4.875339596207933, 59.800964492622995), (-6.567595495415173, 59.63765600814071), (-8.25985940453396, 59.42511053464744), (-9.945077357838253, 59.163981154556794), (-11.61669040378865, 58.85552320069884), (-13.26862539360054, 58.50153703243996), (-14.895288898726518, 58.104311131848874), (-16.491563202773392, 57.66656540075283), (-18.052803386851277, 57.191394576423065), (-19.574834610314554, 56.682211759287334), (-21.05394877758209, 56.14269214575174), (-22.48689987532432, 55.57671717163869), (-23.870897363373757, 54.98831938755239), (-25.203597108285862, 54.38162849829007), (-26.48308946132303, 53.76081909636924), (-27.707884202698168, 53.13006069743501), (-28.876892199986184, 52.49347073605175), (-29.989403758126414, 51.85507119864339), (-31.045063767536174, 51.21874955234957), (-32.043843880559606, 50.58822457284862), (-32.98601205912729, 49.96701758204168), (-33.87209993228674, 49.35842948208934), (-34.70286847583166, 48.7655238226056), (-35.479272573369045, 48.19111597205692), (-36.20242503615667, 47.63776829325428), (-36.87356064723729, 47.10779105732834), (-37.49400075514249, 46.603248681124164), (-38.06511887700414, 46.12597074821525), (-38.588307685103864, 45.67756717989594), (-39.06494765051443, 45.25944686279975), (-39.49637750873685, 44.872839014400896), (-39.883866601097836, 44.518816573989085), (-40.22858903740722, 44.198320939889925), (-40.53159952416439, 43.912187427251325), (-40.79381061137285, 43.661170887237574), (-41.015971031421756, 43.445971000304944), (-41.198644736063855, 43.26725682592787), (-41.34219018195131, 43.125690251773904), (-41.44673937069935, 43.021948030581854), (-41.512176115196716, 42.95674211711093), (-41.538112979470604, 42.93083801503509), (-41.52386632543006, 42.94507080905743), (-41.468428898481385, 43.00035848486393), (-41.37043939998577, 43.09771202202664), (-41.22814853593471, 43.23824157458296), (-41.03938111096412, 43.42315782133726), (-40.801493874396414, 43.65376726222181), (-40.51132904873431, 43.931459846922735), (-40.16516382100947, 44.25768683694562), (-39.75865660885837, 44.63392621585612), (-39.286791700218544, 45.06163227751243), (-38.74382500414151, 45.542165260123625), (-38.123235259378006, 46.076696109111516), (-37.417687264803476, 46.666080752336015), (-36.6190166630486, 47.31069784968331), (-35.718249637669274, 48.0102441504684), (-34.70567559170402, 48.763482837755106), (-33.57099627180964, 49.567943241192644), (-32.30358031869672, 50.4195759433246), (-30.892856679025222, 51.31237658771063), (-29.328881647181824, 52.23800548473475), (-27.603109396118242, 53.18544862339042), (-25.7093806346923, 54.14078768176164), (-23.645114239636257, 55.08716827995281), (-21.412639718866878, 56.00506973003428), (-19.020546143171487, 56.87297511914717), (-16.484855838312967, 57.668505647402085), (-13.82977896196092, 58.37000972624583), (-11.087796045970125, 58.95848929139606), (-8.298875452056727, 59.419625457466076), (-5.508769347178685, 59.74557308044122)];
+            let pathData = "M " + trajectoryPoints[0][0] + " " + -trajectoryPoints[0][1];
+            for (let i = 1; i < trajectoryPoints.length; i++) {
+                pathData += " L " + trajectoryPoints[i][0] + " " + -trajectoryPoints[i][1];
+            }
+            trajectory.setAttribute("d", pathData);
+            svg.appendChild(trajectory);
+
+            // Crear elementos para el mecanismo
+            const rods = [];
+            const rodConnections = [
+                ["O1", "A"], ["A", "B"], ["B", "O2"],
+                ["B", "C"], ["C", "O1"], ["C", "D"],
+                ["D", "O2"], ["D", "E"], ["B", "E"],
+                ["C", "F"], ["E", "F"]
+            ];
+
+            // Colores para las varillas
+            const rodColors = [
+                "red", "orange", "yellow",
+                "green", "cyan", "blue",
+                "purple", "magenta", "brown",
+                "lime", "pink"
+            ];
+
+            // Crear las varillas
+            for (let i = 0; i < rodConnections.length; i++) {
+                const rod = document.createElementNS(svgNS, "line");
+                rod.setAttribute("class", "rod");
+                rod.setAttribute("stroke", rodColors[i]);
+                svg.appendChild(rod);
+                rods.push(rod);
+            }
+
+            // Crear las articulaciones
+            const joints = {
+                "O1": createJoint(0, 0, "fixed-joint"),
+                "O2": createJoint(pivot_distance, 0, "joint", "O2"),
+                "A": createJoint(0, 0, "joint", "A"),
+                "B": createJoint(0, 0, "joint", "B"),
+                "C": createJoint(0, 0, "joint", "C"),
+                "D": createJoint(0, 0, "joint", "D"),
+                "E": createJoint(0, 0, "joint", "E"),
+                "F": createJoint(0, 0, "foot", "F")
+            };
+
+            // Mostrar longitudes
+            document.getElementById("lengths").textContent = segment_lengths.map((l, i) => `L${i+1}: ${l.toFixed(2)}`).join("\n");
+
+            // Variables para animación
+            let angle = 0;
+            let animationId = null;
+            let isPlaying = false;
+
+            // Funciones para cinemática
+            function updateMechanism(angle) {
+                const points = calculatePoints(angle);
+                if (!points) {
+                    console.error("Configuración inválida para ángulo: " + angle);
+                    return false;
+                }
+
+                // Actualizar posiciones de las articulaciones
+                for (const [key, point] of Object.entries(points)) {
+                    if (key === "O1" || key === "O2") continue; // Puntos fijos
+                    joints[key].setAttribute("cx", point[0]);
+                    joints[key].setAttribute("cy", -point[1]); // Invertir Y para SVG
+                }
+
+                // Actualizar posiciones de las varillas
+                for (let i = 0; i < rodConnections.length; i++) {
+                    const [p1, p2] = rodConnections[i];
+                    rods[i].setAttribute("x1", points[p1][0]);
+                    rods[i].setAttribute("y1", -points[p1][1]);
+                    rods[i].setAttribute("x2", points[p2][0]);
+                    rods[i].setAttribute("y2", -points[p2][1]);
+                }
+
+                // Detectar cruces
+                const crossings = countRodCrossings(points);
+                document.getElementById("crossings").textContent = crossings;
+
+                return true;
+            }
+
+            function createJoint(x, y, className, label) {
+                const joint = document.createElementNS(svgNS, "circle");
+                joint.setAttribute("class", className);
+                joint.setAttribute("cx", x);
+                joint.setAttribute("cy", -y);
+                joint.setAttribute("r", 3);
+                svg.appendChild(joint);
+
+                const text = document.createElementNS(svgNS, "text");
+                text.setAttribute("class", "infotext");
+                text.setAttribute("x", x + 5);
+                text.setAttribute("y", -y - 5);
+                text.textContent = label;
+                svg.appendChild(text);
+
+                return joint;
+            }
+
+            function circleIntersection(p0, r0, p1, r1) {
+                const epsilon = 1e-6;
+                let dx = p1[0] - p0[0];
+                let dy = p1[1] - p0[1];
+                const d = Math.sqrt(dx*dx + dy*dy);
+
+                // Verificar si los círculos están demasiado lejos o demasiado cerca
+                if (d > r0 + r1 + epsilon || d < Math.abs(r0 - r1) - epsilon) {
+                    return [];
+                }
+
+                // Caso de círculos coincidentes
+                if (Math.abs(d) < epsilon && Math.abs(r0 - r1) < epsilon) {
+                    return [[p0[0] + r0, p0[1]], [p0[0] - r0, p0[1]]];
+                }
+
+                // Cálculo de los puntos de intersección
+                const a = (r0*r0 - r1*r1 + d*d) / (2*d);
+                const h = Math.sqrt(r0*r0 - a*a);
+
+                const p2x = p0[0] + a * (p1[0] - p0[0]) / d;
+                const p2y = p0[1] + a * (p1[1] - p0[1]) / d;
+
+                const p3x1 = p2x + h * (p1[1] - p0[1]) / d;
+                const p3y1 = p2y - h * (p1[0] - p0[0]) / d;
+
+                const p3x2 = p2x - h * (p1[1] - p0[1]) / d;
+                const p3y2 = p2y + h * (p1[0] - p0[0]) / d;
+
+                return [[p3x1, p3y1], [p3x2, p3y2]];
+            }
+
+            function calculatePoints(theta) {
+                try {
+                    const O1 = [0, 0];
+                    const O2 = [pivot_distance, 0];
+
+                    // A: manivela en O1
+                    const A = [
+                        segment_lengths[0] * Math.cos(theta),
+                        segment_lengths[0] * Math.sin(theta)
+                    ];
+
+                    // B: intersección de círculos (A, L2) y (O2, L3)
+                    const intersB = circleIntersection(A, segment_lengths[1], O2, segment_lengths[2]);
+                    if (intersB.length === 0) return null;
+                    // Seleccionar el punto más alto
+                    const B = intersB[0][1] > intersB[1][1] ? intersB[0] : intersB[1];
+
+                    // C: intersección de círculos (B, L4) y (O1, L5)
+                    const intersC = circleIntersection(B, segment_lengths[3], O1, segment_lengths[4]);
+                    if (intersC.length === 0) return null;
+                    const C = intersC[0][1] > intersC[1][1] ? intersC[0] : intersC[1];
+
+                    // D: intersección de círculos (C, L6) y (O2, L7)
+                    const intersD = circleIntersection(C, segment_lengths[5], O2, segment_lengths[6]);
+                    if (intersD.length === 0) return null;
+                    const D = intersD[0][1] > intersD[1][1] ? intersD[0] : intersD[1];
+
+                    // E: intersección de círculos (D, L8) y (B, L9)
+                    const intersE = circleIntersection(D, segment_lengths[7], B, segment_lengths[8]);
+                    if (intersE.length === 0) return null;
+                    const E = intersE[0][1] > intersE[1][1] ? intersE[0] : intersE[1];
+
+                    // F: intersección de círculos (C, L10) y (E, L11)
+                    const intersF = circleIntersection(C, segment_lengths[9], E, segment_lengths[10]);
+                    if (intersF.length === 0) return null;
+                    const F = intersF[0][1] > intersF[1][1] ? intersF[0] : intersF[1];
+
+                    return {
+                        "O1": O1, "O2": O2, "A": A, "B": B,
+                        "C": C, "D": D, "E": E, "F": F
+                    };
+
+                } catch (e) {
+                    console.error("Error en cálculo de cinemática:", e);
+                    return null;
+                }
+            }
+
+            function ccw(a, b, c) {
+                return (c[1] - a[1]) * (b[0] - a[0]) > (b[1] - a[1]) * (c[0] - a[0]);
+            }
+
+            function segmentsIntersect(p1, p2, p3, p4) {
+                // Ignorar segmentos conectados
+                if ((p1[0] === p3[0] && p1[1] === p3[1]) ||
+                    (p1[0] === p4[0] && p1[1] === p4[1]) ||
+                    (p2[0] === p3[0] && p2[1] === p3[1]) ||
+                    (p2[0] === p4[0] && p2[1] === p4[1])) {
+                    return false;
+                }
+                return ccw(p1, p3, p4) !== ccw(p2, p3, p4) && ccw(p1, p2, p3) !== ccw(p1, p2, p4);
+            }
+
+            function countRodCrossings(pts) {
+                let crossings = 0;
+                const segments = rodConnections.map(([p1, p2]) => [pts[p1], pts[p2]]);
+
+                for (let i = 0; i < segments.length; i++) {
+                    for (let j = i+1; j < segments.length; j++) {
+                        if (segmentsIntersect(segments[i][0], segments[i][1], segments[j][0], segments[j][1])) {
+                            crossings++;
+                        }
+                    }
+                }
+
+                return crossings;
+            }
+
+            // Controles de interfaz
+            const slider = document.getElementById("angleSlider");
+            const angleValueDisplay = document.getElementById("angleValue");
+            const playPauseBtn = document.getElementById("playPauseBtn");
+            const resetBtn = document.getElementById("resetBtn");
+
+            // Inicializar mecanismo
+            updateMechanism(0);
+
+            // Eventos
+            slider.oninput = function() {
+                angle = (this.value / 50) * Math.PI;
+                angleValueDisplay.textContent = Math.round((angle * 180 / Math.PI)) + "°";
+                updateMechanism(angle);
+            };
+
+            playPauseBtn.onclick = function() {
+                if (isPlaying) {
+                    cancelAnimationFrame(animationId);
+                    playPauseBtn.textContent = "▶ Iniciar";
+                } else {
+                    animate();
+                    playPauseBtn.textContent = "⏸ Pausar";
+                }
+                isPlaying = !isPlaying;
+            };
+
+            resetBtn.onclick = function() {
+                if (isPlaying) {
+                    cancelAnimationFrame(animationId);
+                    playPauseBtn.textContent = "▶ Iniciar";
+                    isPlaying = false;
+                }
+                angle = 0;
+                slider.value = 0;
+                angleValueDisplay.textContent = "0°";
+                updateMechanism(angle);
+            };
+
+            function animate() {
+                angle += 0.02;
+                if (angle > 2 * Math.PI) {
+                    angle = 0;
+                }
+                slider.value = (angle / (2 * Math.PI)) * 100;
+                angleValueDisplay.textContent = Math.round((angle * 180 / Math.PI)) + "°";
+                updateMechanism(angle);
+                animationId = requestAnimationFrame(animate);
+            }
+        </script>
+    </body>
+    </html>
+    
